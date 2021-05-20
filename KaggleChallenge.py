@@ -2,54 +2,62 @@ import os
 import cv2
 import random
 import numpy as np
-import tensorflow as tf
+from tensorflow import keras
 
 DIR = 'C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/kagglecatsanddogs_3367a'
 resolution=50
 os.chdir(DIR)
 
-def loadData():
+def loadData(noOfImgs):
     
-    trainingSet=[]
+    dataSet=[]
     
     for category in os.listdir(DIR):
+        
         categoryDir=os.path.join(DIR,category)
+
+        counter=0
+        
         for img in os.listdir(categoryDir):
-            imgArrayForm = cv2.imread(os.path.join(categoryDir,img),0)
-            try:
-                imgArrayForm= cv2.resize(imgArrayForm, (resolution,resolution))#lowers resolution to increase training speed
-                trainingSet.append([imgArrayForm,category])
-            except:
-                print(img)#just so i can see which images are broken
+            if counter < noOfImgs:
+                
+                imgArrayForm = cv2.imread(os.path.join(categoryDir,img),0)
+                counter= counter+1
+            
+                try:
+                    imgArrayForm= cv2.resize(imgArrayForm, (resolution,resolution))#lowers resolution to increase training speed and reduce memory problems
+                    dataSet.append([imgArrayForm,category])
+                except:
+                    print(img)#just so i can see which images are broken
+            else:
                 break
                 
-    return trainingSet
+    return dataSet
 
-def createTrainingSet():
+def createDataSet(noOfImages):
 
-    trainingSet=[]
-    trainingSet= loadData()
+    DataSet=[]
+    DataSet= loadData(noOfImages)
+    random.shuffle(DataSet)
     
-    trainingValues=[]
+    Values=[]
     results=[]
     
-    for i in trainingSet:
-        trainingValues.append(i[0])
-        if i[1] == 'cat':
-            results.append(0)
+    for x in DataSet:
+        
+        Values.append(x[0])
+        if x[1] == 'Cat':
+            results.append([0,1])
         else:
-            results.append(1)
-
-    random.shuffle(results)
-    random.shuffle(trainingValues)
+            results.append([1,0])
     
     results = np.array(results)
-    trainingValues = np.array(trainingValues)
+    Values = np.array(Values)
+    Values= Values/255#makes all pixel values between 0 and 1 (helps to increase training speed if training values are closer together)
     
-    return results, trainingValues
+    return results, Values
 
-results, trainingValues= createTrainingSet()
-    
+
 
 #machine learning basics:
 #J() is a cost function used to mesure the success of a model
@@ -58,18 +66,37 @@ results, trainingValues= createTrainingSet()
 #a() is an activation function
 #Z(L) = a(X(L)transposed*theta(L)) gives the output for each layer, if it is the last layer this will give the final output
 #J(Z(final layer)) is used to calculate how well this model fitted the data
-#the method you use to update the weights to recieve a better model changes what you do from here.
+#the method you use to update the weights to recieve a better model changes depending on the problem.
 #in normal gradient descent, you backprop, using the derivatives to work out optimise each weight.
-#tensorflow allows you to basically ignore all this, but it helps knowing how this works when optimising your algorithm
+#tensorflow and keras allows you to basically ignore all this, but it helps knowing how this works when optimising your algorithm
 
 def main():
 
-    model = tf.keras.Sequential()
-    
-    model.add(tf.keras.layers.flatten())
-    model.add(tf.keras.layers.Dense(units=100, input_shape=[resolution*resolution], activation='relu'))
-    model.add(tf.keras.layers.Dense(units=12, activation='relu'))
-    model.add(tf.keras.layers.Dense(units=1, activation='sigmoid'))
-    
+    results, trainingValues= createDataSet(200)
 
-    model.compile(optimizer='sgd', loss='mean_squared_logarithmic_error')
+    model = keras.Sequential()
+    
+    model.add(keras.layers.Flatten(input_shape=(resolution,resolution)))
+    model.add(keras.layers.Dense(units=512, activation='relu' ))
+    model.add(keras.layers.Dense(units=256, activation='relu' ))
+    model.add(keras.layers.Dense(units=128, activation='relu'))
+    model.add(keras.layers.Dense(units=16, activation='relu'))
+    model.add(keras.layers.Dense(units=2, activation='softmax'))
+    #you can use binary classification too since there are only two classes
+
+    model.compile(optimizer='sgd', loss='categorical_crossentropy')#i wrote a pretty large model  since the task is relatively complex
+
+    model.fit(trainingValues, results, epochs=200)# you have to experiement and see if more epochs are reducing the loss more or more training examples
+
+    testResults, testValues= createDataSet(2000)
+
+    print(testResults)
+
+    cv2.imshow("image", testValues[0])
+
+    print(model(testValues))
+
+    #then store weights and you got your model
+
+    
+main()
