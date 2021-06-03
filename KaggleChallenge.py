@@ -28,13 +28,13 @@ def loadData(noOfImgs):
                     imgArrayForm= cv2.resize(imgArrayForm, (resolution,resolution))#lowers resolution to increase training speed and reduce memory problems
                     dataSet.append([imgArrayForm,category])
                 except:
-                    print(img)#just so i can see which images are broken
+                    print(img)#just so I can see which images are broken
             else:
                 break
                 
     return dataSet
 
-def createDataSet(noOfImages):
+def createDataSet(noOfImages, ratio):
 
     DataSet=[]
     DataSet= loadData(noOfImages)
@@ -51,11 +51,18 @@ def createDataSet(noOfImages):
         else:
             results.append([1,0])
     
-    results = np.array(results)
-    Values = np.array(Values)
-    Values= Values/255#makes all pixel values between 0 and 1 (helps to increase training speed if training values are closer together)
+    testResults = np.array(results[int(noOfImages*(1-ratio)):])
+    trainingResults = np.array(results[:int(noOfImages*ratio)])
     
-    return results, Values
+    testValues = np.array(Values[int(noOfImages*(1-ratio)):])
+    trainingValues = np.array(Values[:int(noOfImages*ratio)])
+
+    
+    
+    trainingValues= trainingValues/255#makes all pixel values between 0 and 1 (helps to increase training speed if training values are closer together)
+    testValues= testValues/255
+    
+    return trainingResults, trainingValues, testResults, testValues
 
 
 
@@ -72,31 +79,30 @@ def createDataSet(noOfImages):
 
 def main():
 
-    results, trainingValues= createDataSet(200)
+    results, trainingValues, testResults, testValues= createDataSet(30000, 0.2)
 
+    print (results)
+    
     model = keras.Sequential()
     
     model.add(keras.layers.Flatten(input_shape=(resolution,resolution)))
-    model.add(keras.layers.Dense(units=512, activation='relu' ))
-    model.add(keras.layers.Dense(units=256, activation='relu' ))
-    model.add(keras.layers.Dense(units=128, activation='relu'))
-    model.add(keras.layers.Dense(units=16, activation='relu'))
+    model.add(keras.layers.Dense(units=100, activation='relu' ))
+    model.add(keras.layers.Dropout(0.2))
+    model.add(keras.layers.Dense(units=32, activation='relu' ))
+    model.add(keras.layers.Dense(units=8, activation='relu' ))
     model.add(keras.layers.Dense(units=2, activation='softmax'))
+
+    
     #you can use binary classification too since there are only two classes
+    
+    #callback = keras.callbacks.EarlyStopping(monitor='loss', patience=3)
+    model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=[keras.metrics.CategoricalAccuracy()])#i wrote a pretty large model  since the task is relatively complex
 
-    model.compile(optimizer='sgd', loss='categorical_crossentropy')#i wrote a pretty large model  since the task is relatively complex
+    model.fit(trainingValues, results, epochs=2)# you have to experiement and see if more epochs are reducing the loss more
+    model.save('C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/KerasModel')
 
-    model.fit(trainingValues, results, epochs=200)# you have to experiement and see if more epochs are reducing the loss more or more training examples
+    print(model.evaluate(testValues, testResults))
 
-    testResults, testValues= createDataSet(2000)
-
-    print(testResults)
-
-    cv2.imshow("image", testValues[0])
-
-    print(model(testValues))
-
-    #then store weights and you got your model
 
     
 main()
