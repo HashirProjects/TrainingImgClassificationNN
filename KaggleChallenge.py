@@ -65,10 +65,11 @@ def createDataSet(ratio):
     testValues = np.array(Values[int(len(Values)*ratio):])
     trainingValues = np.array(Values[:int(len(Values)*ratio)])
 
-    
-    
     trainingValues= trainingValues/255#makes all pixel values between 0 and 1 (helps to increase training speed if training values are closer together)
     testValues= testValues/255
+
+    trainingValues -= np.mean(trainingValues)
+    testValues -= np.mean(testValues)
     
     return trainingResults, trainingValues, testResults, testValues
 
@@ -111,19 +112,17 @@ def main():
     
     #you can use binary classification too since there are only two classes
     initial_learning_rate = 0.01
-    #lr_schedule = keras.optimizers.schedules.ExponentialDecay(
-        #initial_learning_rate,
-        #decay_steps=100000,
-        #decay_rate=0.96,
-        #staircase=True)
+    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate,
+        decay_steps=100000,
+        decay_rate=0.96,
+        staircase=True)
     
     #callback = keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.compile(optimizer=keras.optimizers.SGD(learning_rate=initial_learning_rate), loss='categorical_crossentropy', metrics=[keras.metrics.CategoricalAccuracy()])#i wrote a pretty large model  since the task is relatively complex
+    model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule), loss='categorical_crossentropy', metrics=[keras.metrics.CategoricalAccuracy()])#i wrote a pretty large model  since the task is relatively complex
 
     model.fit(trainingValues, results, epochs=1)# you have to experiement and see if more epochs are reducing the loss more
     model.save('C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/KerasModel')
-
-    cv2.imshow("img", testValues[0])
 
     print(model.evaluate(testValues, testResults))
 
