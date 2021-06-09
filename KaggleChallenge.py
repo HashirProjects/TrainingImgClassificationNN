@@ -3,6 +3,7 @@ import cv2
 import random
 import numpy as np
 from tensorflow import keras
+import pickle
 
 DIR = 'C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/kagglecatsanddogs_3367a'
 resolution=50
@@ -31,13 +32,19 @@ def loadData(noOfImgs):
                     print(img)#just so i can see which images are broken
             else:
                 break
+            
+    with open('C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/ImgData.txt', "wb") as file:
+        pickle.dump(dataSet, file)
                 
     return dataSet
 
-def createDataSet(noOfImages, ratio):
+def createDataSet(ratio):
 
     DataSet=[]
-    DataSet= loadData(noOfImages)
+    
+    with open('C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/ImgData.txt', "rb") as file:
+        DataSet = pickle.load(file)
+        
     random.shuffle(DataSet)
     
     Values=[]
@@ -51,13 +58,15 @@ def createDataSet(noOfImages, ratio):
         else:
             results.append([1,0])
     
-    testResults = np.array(results[int(noOfImages*(1-ratio)):])
-    testResults = np.resize(testResults, (int(noOfImages*(1-ratio)), resolution, resolution, 1))
-    trainingResults = np.array(results[:int(noOfImages*ratio)])
+    testResults = np.array(results[int(len(results)*ratio):])
+    testResults = np.resize(testResults, (len(testResults), resolution, resolution, 1))
+    trainingResults = np.array(results[:int(len(results)*ratio)])
+    trainingResults = np.resize(trainingResults, (len(trainingResults), resolution, resolution, 1))
     
-    testValues = np.array(Values[int(noOfImages*(1-ratio)):])
-    testValues = np.resize(testValues, (int(noOfImages*ratio), resolution, resolution, 1))
-    trainingValues = np.array(Values[:int(noOfImages*ratio)])
+    testValues = np.array(Values[int(len(Values)*ratio):])
+    testValues = np.resize(testValues, (len(testValues), resolution, resolution, 1))
+    trainingValues = np.array(Values[:int(len(Values)*ratio)])
+    trainingValues = np.resize(trainingValues, (len(trainingValues), resolution, resolution, 1))
 
     
     
@@ -81,7 +90,7 @@ def createDataSet(noOfImages, ratio):
 
 def main():
 
-    results, trainingValues, testResults, testValues= createDataSet(3000, 0.8)
+    results, trainingValues, testResults, testValues= createDataSet(0.9)
 
     print (results)
     
