@@ -6,7 +6,7 @@ from tensorflow import keras
 import pickle
 
 DIR = 'C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/kagglecatsanddogs_3367a'
-resolution=50
+resolution=35
 os.chdir(DIR)
 
 def loadData(noOfImgs):
@@ -59,19 +59,21 @@ def createDataSet(ratio):
             results.append([1,0])
     
     testResults = np.array(results[int(len(results)*ratio):])
-    testResults = np.resize(testResults, (len(testResults), resolution, resolution, 1))
     trainingResults = np.array(results[:int(len(results)*ratio)])
-    trainingResults = np.resize(trainingResults, (len(trainingResults), resolution, resolution, 1))
     
     testValues = np.array(Values[int(len(Values)*ratio):])
     testValues = np.resize(testValues, (len(testValues), resolution, resolution, 1))
+    
     trainingValues = np.array(Values[:int(len(Values)*ratio)])
     trainingValues = np.resize(trainingValues, (len(trainingValues), resolution, resolution, 1))
-
-    
+        
     
     trainingValues= trainingValues/255#makes all pixel values between 0 and 1 (helps to increase training speed if training values are closer together)
     testValues= testValues/255
+
+    trainingValues -= np.mean(trainingValues)#mean centering helps activation functions work especially relu
+    testValues -= np.mean(testValues)
+    
     
     return trainingResults, trainingValues, testResults, testValues
 
@@ -92,28 +94,30 @@ def main():
 
     results, trainingValues, testResults, testValues= createDataSet(0.9)
 
-    print (results)
+    print (results.shape)
     
     model = keras.Sequential()
-    
-    #model.add(keras.layers.Flatten(input_shape=(resolution,resolution)))
-    #model.add(keras.layers.Dense(units=100, activation='relu' ))
-    #model.add(keras.layers.Dropout(0.1))
-    #model.add(keras.layers.Dense(units=32, activation='relu' ))
-    #model.add(keras.layers.Dropout(0.5))
-    #model.add(keras.layers.Dense(units=8, activation='relu' ))
-    #model.add(keras.layers.Dense(units=2, activation='softmax'))
 
-    model.add(keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=(trainingValues.shape)))
+    model.add(keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same', input_shape=(trainingValues[0].shape)))
+    model.add(keras.layers.MaxPooling2D((2, 2)))
+    model.add(keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same', ))
+    model.add(keras.layers.MaxPooling2D((2, 2)))
+    model.add(keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same', ))
     model.add(keras.layers.MaxPooling2D((2, 2)))
     model.add(keras.layers.Flatten())
     model.add(keras.layers.Dense(128, activation='relu'))
     model.add(keras.layers.Dense(2, activation='softmax'))
     
     #you can use binary classification too since there are only two classes
+    initial_learning_rate = 0.01
+    lr_schedule = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate,
+        decay_steps=100000,
+        decay_rate=0.96,
+        staircase=True)
     
     #callback = keras.callbacks.EarlyStopping(monitor='loss', patience=3)
-    model.compile(optimizer='sgd', loss='categorical_crossentropy', metrics=[keras.metrics.CategoricalAccuracy()])#i wrote a pretty large model  since the task is relatively complex
+    model.compile(optimizer=keras.optimizers.SGD(learning_rate=lr_schedule), loss='categorical_crossentropy', metrics=[keras.metrics.CategoricalAccuracy()])#i wrote a pretty large model  since the task is relatively complex
 
     model.fit(trainingValues, results, epochs=2)# you have to experiement and see if more epochs are reducing the loss more
     model.save('C:/Users/Ataul/OneDrive/Desktop/Programming/ML/KaggleAnimalRecognition/KerasModel')
